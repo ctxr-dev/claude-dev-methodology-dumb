@@ -1,0 +1,53 @@
+# ctxr-dev development methodology — entry point
+
+**ALWAYS read first** when picking up any task in a project that has imported this methodology. The order below is the recommended read order for cold-start.
+
+## Per-project configuration
+
+Before doing anything, check whether `.claude/memory/ctxr-dev.config.local.md` exists in the project. It carries:
+
+- The project board URL (`<PROJECT_URL>`).
+- The owner / repo names (`<OWNER>`, primary `<REPO>`, sibling repos).
+- The default code-review provider (Copilot, named human, or "ask").
+- The PR-loop polling interval + max-duration overrides (if any).
+- The local Bot node IDs (Copilot, Dependabot) for the consumer org.
+
+If it doesn't exist, create one from [`templates/ctxr-dev.config.local.md`](templates/ctxr-dev.config.local.md) and ASK THE USER to fill in the values before proceeding. See [`local-config.md`](local-config.md) for the full schema.
+
+## Topic index
+
+1. [`pr-loop.md`](pr-loop.md) — PR review loop. 5-min cadence, 24h max. Reviewer auto-discovery (Copilot / configured / ask). Exit predicate: all required reviewers approved + no unresolved threads + CI green. ALWAYS resolve threads in the same turn that fixes them.
+2. [`commits.md`](commits.md) — Conventional Commits 1.0 (MUST). Reviewer-request via GraphQL `requestReviews` with `botIds` (NOT REST). Discovery snippet for bot node IDs.
+3. [`plan-to-issues.md`](plan-to-issues.md) — Recipe for turning a markdown plan into a wired native sub-issue tree on a GitHub Project. Every issue cold-start ready.
+4. [`issue-schema.md`](issue-schema.md) — Canonical body shape. MUST-FOLLOW; validator hard-fails on missing sections.
+5. [`label-taxonomy.md`](label-taxonomy.md) — Locked families (`type:*`, `scope:*`, `phase:*`, `release:*`) + project-extensible `area:*`. Cascade install across all repos in the project.
+6. [`cold-start.md`](cold-start.md) — How to pick up an issue with zero prior context. The 4-step warm-up sequence.
+7. [`parallel-validation.md`](parallel-validation.md) — After every plan migration, spawn 3 Plan agents (completeness / dep-graph / cold-start) SCOPED TO TOUCHED ISSUES ONLY. Token economy: don't audit untouched parts of the tree.
+8. [`plan-deprecation.md`](plan-deprecation.md) — Once issues exist, the AI auto-minimizes the original plan file to title + 1-paragraph + epic link.
+9. [`audit-vs-execute.md`](audit-vs-execute.md) — Investigation findings ≠ approval. Always pause for explicit user "go" before mutating artefacts. PR merge is human-gated.
+
+## Validation scripts
+
+Live under [`scripts/`](scripts/). Run them from the methodology directory:
+
+```bash
+cd .claude/memory/ctxr-dev/scripts
+npm install
+node validate-tree.mjs <ROOT_ISSUE_URL>
+node validate-issue-schema.mjs <OWNER>/<REPO>
+node validate-labels.mjs <OWNER>
+node diff-plan.mjs <PLAN_FILE> <PROJECT_URL>
+```
+
+Each script honours the per-project config at `<project-root>/.claude/memory/ctxr-dev.config.local.md` (read via the parser at `scripts/lib/config.mjs`).
+
+## Quick reference recipes (for when the AI is in a hurry)
+
+- **New PR cycle:** see `pr-loop.md` → "Loop step-by-step".
+- **Migrate a plan to issues:** see `plan-to-issues.md` → "10-step recipe".
+- **After plan migration validation:** see `parallel-validation.md` → "3-agent prompt templates".
+- **Pick up a cold issue:** see `cold-start.md` → "4-step warm-up".
+
+## Source-of-truth contract
+
+GitHub Project + Issues are the source of truth for multi-issue work in any project that imports this methodology. Local plan files are session-scratch only; they get archived/minimized once their content is migrated to issues. See [`plan-deprecation.md`](plan-deprecation.md).
