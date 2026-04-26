@@ -37,9 +37,11 @@ The methodology stays project-agnostic. Per-project values live in a gitignored 
 Add to `.gitignore`:
 
 ```
-*.local.md
+.claude/memory/ctxr-dev
 .claude/memory/*.local.md
 ```
+
+The first line keeps the cloned methodology (its own `.git/`) from being tracked by the outer project. The second keeps the per-project config private. See the README's "Why `.gitignore`" section for the full rationale.
 
 ## How the AI reads it
 
