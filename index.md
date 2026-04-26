@@ -19,6 +19,7 @@ If it doesn't exist, create one from [`templates/ctxr-dev.config.local.md`](temp
 1. [`pr-loop.md`](pr-loop.md) — PR review loop. 5-min cadence, 24h max. Reviewer auto-discovery (Copilot / configured / ask). Exit predicate: all required reviewers approved + no unresolved threads + CI green. ALWAYS resolve threads in the same turn that fixes them.
 2. [`commits.md`](commits.md) — Conventional Commits 1.0 (MUST). Reviewer-request via GraphQL `requestReviews` with `botIds` (NOT REST). Discovery snippet for bot node IDs.
 3. [`plan-to-issues.md`](plan-to-issues.md) — Recipe for turning a markdown plan into a wired native sub-issue tree on a GitHub Project. Every issue cold-start ready.
+3a. [`issue-lifecycle.md`](issue-lifecycle.md) — Single-issue / single-PR flow for non-trivial fixes that don't warrant a sub-issue tree. Six-step contract: create issue → branch → PR with `Closes #N` → wait → explicit close → bundling rules. Covers the auto-close gotcha for non-default-branch merges.
 4. [`issue-schema.md`](issue-schema.md) — Canonical body shape. MUST-FOLLOW; validator hard-fails on missing sections.
 5. [`label-taxonomy.md`](label-taxonomy.md) — Locked families (`type:*`, `scope:*`, `phase:*`, `release:*`) + project-extensible `area:*`. Cascade install across all repos in the project.
 6. [`cold-start.md`](cold-start.md) — How to pick up an issue with zero prior context. The 4-step warm-up sequence.

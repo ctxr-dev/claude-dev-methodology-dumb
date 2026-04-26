@@ -96,17 +96,24 @@ If Copilot isn't on the repo:
 After a commit that addresses a reviewer's comment, resolve the thread in the same turn:
 
 ```bash
-# 1. Pull unresolved threads:
-gh api graphql -f query='query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){reviewThreads(first:50){nodes{id isResolved comments(first:1){nodes{body path line}}}}}}}' \
+# 1. Pull unresolved threads. Use first:100 + cursor pagination — first:50 silently truncates on long PRs.
+gh api graphql -f query='query($o:String!,$r:String!,$n:Int!,$c:String){repository(owner:$o,name:$r){pullRequest(number:$n){reviewThreads(first:100,after:$c){totalCount pageInfo{hasNextPage endCursor} nodes{id isResolved comments(first:1){nodes{body path line}}}}}}}' \
   -f o=<OWNER> -f r=<REPO> -F n=<PR_NUM> --jq '.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)'
+# If pageInfo.hasNextPage, fetch the next page with -f c=<endCursor> until exhausted before processing.
 
 # 2. For each thread you fixed, resolve via GraphQL (NO REST equivalent):
 gh api graphql -f query='mutation($tid:ID!){resolveReviewThread(input:{threadId:$tid}){thread{isResolved}}}' \
   -f tid="<PRRT_NODE_ID>"
 ```
 
+**Pagination gotcha:** A long-running PR can accumulate >50 threads. `first:50` (or smaller) silently drops threads beyond the page boundary; the API reports "0 unresolved" while the UI still shows open threads. Always paginate.
+
 Don't resolve threads you didn't address — those are signals you missed the point or want follow-up discussion.
 
 ## Why the GraphQL-only path
 
 REST API endpoints for review-threads (e.g. `gh api repos/.../pulls/N/comments`) return review *comments*, not review *threads*. Only the GraphQL `reviewThreads` surface has the resolve mutation. There is NO REST shortcut. Don't go looking; you'll waste time.
+
+### GraphQL as the default for all PR ops
+
+Beyond review threads, prefer GraphQL for **all** PR mutations and state queries on this methodology: `requestReviews`, `resolveReviewThread`, fetching `pullRequest.reviewRequests` / `reviewThreads` / `reviews`, and discovering bot node IDs. REST endpoints (`POST /pulls/N/requested_reviewers`, `PATCH /pulls/N`) have shown inconsistent state propagation in field reports — reviewers appear added but downstream notifications don't fire, or state shows in API responses but not in the UI. REST is the fallback when GraphQL has no equivalent (rare admin endpoints); GraphQL is the default everywhere else.

@@ -1,0 +1,98 @@
+# Issue lifecycle for single-fix work
+
+The canonical six-step contract for non-trivial fixes and small features. Applies to any change that is too small for the [`plan-to-issues.md`](plan-to-issues.md) sub-issue tree treatment but still warrants a durable issue record.
+
+For multi-step plans that cover several related changes, use [`plan-to-issues.md`](plan-to-issues.md) instead. This file is for the single-issue, single-PR flow.
+
+## When this flow applies
+
+- A reproducible bug with a clear scope.
+- A small feature that fits in one PR.
+- A focused refactor with a defined boundary.
+
+If the work fans out into multiple PRs or multiple workstreams, escalate to the plan-to-issues recipe and create a sub-issue tree.
+
+## The six-step contract
+
+### 1. Create the GitHub issue FIRST
+
+```bash
+gh issue create --repo <OWNER>/<REPO> \
+  --title "<type>(<scope>): <subject>" \
+  --body "$(cat <<'EOF'
+## Context
+Which symptom / log / observation triggered the work.
+
+## Root cause
+file:line references and a short mechanism explanation.
+
+## Proposed fix
+Touch list and a "why this is the right shape" paragraph.
+
+## Verification
+How we'll know it worked (manual repro, test added, log check).
+
+## Priority rationale
+bug vs latent vs tradeoff, and who is impacted.
+EOF
+)"
+```
+
+Issue body MUST follow [`issue-schema.md`](issue-schema.md). The validator hard-fails on missing sections.
+
+### 2. Branch off main, name tied to the issue
+
+```bash
+git checkout main && git pull
+git checkout -b <type>/issue-<N>-<short-slug>   # e.g. fix/issue-42-null-deref
+```
+
+### 3. Run the PR loop with `Closes #<N>` in the body
+
+Drive [`pr-loop.md`](pr-loop.md) end to end. The PR body MUST carry a closing keyword footer:
+
+```
+Closes: <OWNER>/<REPO>#<N>
+```
+
+Use the fully-qualified `<OWNER>/<REPO>#<N>` form when the PR and issue may live in different repos; the bare `Closes #<N>` form is fine when they share a repo.
+
+### 4. Wait for the user to confirm the merge
+
+**Do NOT close the issue pre-emptively.** The PR loop's exit predicate hands off to a human merge decision (see [`audit-vs-execute.md`](audit-vs-execute.md)). After reporting the PR as ready, wait for the user to say it's merged.
+
+### 5. Close the issue explicitly after confirmation
+
+Even when GitHub's auto-close fires, post the explicit close-comment:
+
+```bash
+gh issue close <N> --repo <OWNER>/<REPO> \
+  --comment "Shipped in <merged-commit-SHA> via #<PR_NUM>."
+```
+
+This is idempotent (closing an already-closed issue is a no-op for state, but the comment still posts) and turns the issue into a durable postmortem-style record. Future readers get a single URL with: the symptom, the root cause, the fix shape, the verification, AND the merged commit reference.
+
+### 6. Bundling rules
+
+- **Multiple related fixes** can share one issue. Call them out as a checklist in the issue body and tick them off as commits land.
+- **Multiple unrelated fixes** get one issue + one PR each. Never bundle independent fixes into one PR — review feedback gets tangled, partial reverts get expensive, and the postmortem trail breaks.
+- **A batch of issues** approved together: open them in priority order, one PR per issue, sequentially.
+
+## Auto-close gotcha (the reason for step 5)
+
+GitHub's `Closes #N` keyword auto-closes the issue ONLY when the PR merges into the **default branch** (typically `main`). Edge cases that DO NOT trigger auto-close:
+
+- PR merged into a release branch (e.g. `release/v2`) that later gets merged to main itself.
+- PR description edited to add `Closes #N` AFTER the merge.
+- The issue lives in a different repo than the PR (cross-repo references are advisory, not auto-closing).
+- The PR is closed without merging, and a different commit (manual cherry-pick) ships the fix.
+
+In all four cases, the issue lingers as an unclosed artifact unless step 5 runs explicitly. That is why step 5 is mandatory even when GitHub appears to have closed the issue — the comment is the durable record, and verifying state is `CLOSED` is cheap insurance.
+
+## Cross-references
+
+- [`pr-loop.md`](pr-loop.md) — the PR-side mechanics this flow drives.
+- [`commits.md`](commits.md) — Conventional Commits + the `Closes:` footer form.
+- [`issue-schema.md`](issue-schema.md) — required sections in the issue body.
+- [`plan-to-issues.md`](plan-to-issues.md) — escalation path when a single issue isn't enough.
+- [`audit-vs-execute.md`](audit-vs-execute.md) — why steps 4 and 5 are gated on the human's "go".

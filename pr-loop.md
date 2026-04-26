@@ -2,12 +2,18 @@
 
 The canonical pattern for filing, iterating, and merging PRs in any project that imports this methodology.
 
+For the broader issue → branch → PR → close flow that wraps this loop, see [`issue-lifecycle.md`](issue-lifecycle.md). This file covers PR mechanics; the lifecycle file covers the issue side.
+
 ## Exit predicate
 
 The loop terminates iff ALL three hold:
 
 1. **Every required reviewer** (effective list = configured `required_reviewers` + CODEOWNERS hits on changed paths) has `approved` review status.
-2. **No unresolved review threads** on the PR.
+2. **The reviewer's last review is on the current HEAD AND contains zero new comments.** Check via:
+   ```graphql
+   reviews(last:1) { nodes { commit { oid } comments(first:10) { totalCount } } }
+   ```
+   Exit only when `commit.oid == <HEAD SHA>` AND `comments.totalCount == 0`. **Resolving a thread is a UI affordance, not the exit signal** — `resolveReviewThread` collapses the thread but does not delete its comments, so a resolved thread still contributes to `comments.totalCount`. Check thread-resolution as a hygiene step (so the PR UI is clean for the human merger), but don't conflate it with the exit predicate.
 3. **CI status: success** for the head SHA.
 
 Otherwise: keep iterating.
@@ -86,14 +92,16 @@ For each new comment from the reviewer:
 3. **If addressing**: edit, run tests, commit (`fix(review): <what>`), push.
 4. **Resolve the thread** in the SAME turn as the push:
    ```bash
-   # 1. Fetch unresolved threads:
-   gh api graphql -f query='query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){reviewThreads(first:50){nodes{id isResolved comments(first:1){nodes{body path line}}}}}}}' \
+   # 1. Fetch unresolved threads. Use first:100 + cursor pagination — first:50 silently truncates on long-running PRs.
+   gh api graphql -f query='query($o:String!,$r:String!,$n:Int!,$c:String){repository(owner:$o,name:$r){pullRequest(number:$n){reviewThreads(first:100,after:$c){totalCount pageInfo{hasNextPage endCursor} nodes{id isResolved comments(first:1){nodes{body path line}}}}}}}' \
      -f o=<OWNER> -f r=<REPO> -F n=$PR_NUM --jq '.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)'
+   # If pageInfo.hasNextPage, fetch the next page with -f c=<endCursor> until exhausted, then collect all unresolved IDs.
 
    # 2. For each thread you fixed, resolve via GraphQL (NO REST equivalent exists):
    gh api graphql -f query='mutation($tid:ID!){resolveReviewThread(input:{threadId:$tid}){thread{isResolved}}}' \
      -f tid="<THREAD_ID>"   # PRRT_... node id from step 1
    ```
+   **Pagination gotcha:** A long-running PR can accumulate >50 review threads. `first:50` (or smaller) silently drops threads beyond the page boundary. The API will report "0 unresolved" while the PR UI still shows open threads. Always paginate via `pageInfo.hasNextPage` + `endCursor` until exhausted before declaring the predicate met.
 5. **Do NOT resolve** threads you didn't fix — leave them open as discussion signal.
 
 ## Re-requesting review after a push
