@@ -16,9 +16,25 @@ This repo bundles:
 
 Copy this prompt and paste it to your AI:
 
-> Add the ctxr-dev development methodology to this project. Run: `cd .claude/memory && git clone https://github.com/ctxr-dev/claude-dev-methodology-dumb.git ctxr-dev`. Then add this single bullet to `.claude/memory/MEMORY.md` (creating the file if it doesn't exist): `- [ctxr-dev methodology](ctxr-dev/index.md) — PR loop, plan-to-issues, validation scripts, cold-start schema. ALWAYS read first.`. Then read `.claude/memory/ctxr-dev/index.md` and follow the methodology going forward.
+> Add the ctxr-dev development methodology to this project. Run these three steps:
+>
+> 1. `mkdir -p .claude/memory && cd .claude/memory && git clone https://github.com/ctxr-dev/claude-dev-methodology-dumb.git ctxr-dev`
+> 2. Append `.claude/memory/ctxr-dev` and `.claude/memory/*.local.md` to the project root's `.gitignore` (creating the file if missing). The methodology has its own `.git/` and must NOT be tracked by the outer repo; the `*.local.md` rule keeps the per-project config private.
+> 3. Add this single bullet to `.claude/memory/MEMORY.md` (creating the file if missing): `- [ctxr-dev methodology](ctxr-dev/index.md) — PR loop, plan-to-issues, validation scripts, cold-start schema. ALWAYS read first.`
+>
+> Then read `.claude/memory/ctxr-dev/index.md` and follow the methodology going forward.
 
 After that one prompt, every future AI session in the project inherits the methodology automatically.
+
+### Why `.gitignore`
+
+The methodology is its **own git repository** (cloned into your project's `.claude/memory/ctxr-dev/`). The outer project's git would otherwise try to track the methodology's files as ordinary content, which causes:
+
+- Confused submodule warnings (the nested `.git/` directory).
+- Methodology updates appearing as foreign diffs in your project's PRs.
+- Accidental commits of methodology content into your project.
+
+Treating it as a non-tracked subtree avoids all three. To pull methodology updates: `cd .claude/memory/ctxr-dev && git pull`.
 
 ## Per-project configuration
 
