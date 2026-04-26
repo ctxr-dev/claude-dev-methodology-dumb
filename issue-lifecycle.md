@@ -12,6 +12,16 @@ For multi-step plans that cover several related changes, use [`plan-to-issues.md
 
 If the work fans out into multiple PRs or multiple workstreams, escalate to the plan-to-issues recipe and create a sub-issue tree.
 
+## Project-board status transitions (summary)
+
+If the issue is on a GitHub Project board, the AI moves it through exactly two transitions; the human owns the third:
+
+- **Todo / Backlog → In progress** — set when the AI starts work on the issue (typically right before / after step 2: branch creation).
+- **In progress → In review** — set when the dev loop finishes and the PR is open and review-ready (end of step 3).
+- **In review → Done** — **HUMAN ONLY.** Triggered by the human merging the PR and closing the issue. The AI never sets `Done` and never merges the PR. See [`audit-vs-execute.md`](audit-vs-execute.md).
+
+These transitions are reflected inline in the steps below.
+
 ## The six-step contract
 
 ### 1. Create the GitHub issue FIRST
@@ -47,6 +57,8 @@ git checkout main && git pull
 git checkout -b <type>/issue-<N>-<short-slug>   # e.g. fix/issue-42-null-deref
 ```
 
+**Set project-board status: `In progress`.** Work has now started on a known issue, so the board MUST reflect it. If the issue is on a Project, update the `Status` field via GraphQL `updateProjectV2ItemFieldValue`. Idempotent — safe to re-run.
+
 ### 3. Run the PR loop with `Closes #<N>` in the body
 
 Drive [`pr-loop.md`](pr-loop.md) end to end. The PR body MUST carry a closing keyword footer:
@@ -57,20 +69,26 @@ Closes: <OWNER>/<REPO>#<N>
 
 Use the fully-qualified `<OWNER>/<REPO>#<N>` form when the PR and issue may live in different repos; the bare `Closes #<N>` form is fine when they share a repo.
 
+**Set project-board status: `In review`** once the dev loop's exit predicate holds (PR open, CI green, reviewers requested) and the AI has handed off to the human merge gate. This is the AI's last status mutation on the item.
+
 ### 4. Wait for the user to confirm the merge
 
 **Do NOT close the issue pre-emptively.** The PR loop's exit predicate hands off to a human merge decision (see [`audit-vs-execute.md`](audit-vs-execute.md)). After reporting the PR as ready, wait for the user to say it's merged.
 
+**PR merge is human-only.** The AI never runs `gh pr merge`, never clicks the merge button, and never auto-promotes the project item to `Done`. The human merges the PR and the human moves the board status to `Done` (or lets the issue close auto-promote it, depending on project automation).
+
 ### 5. Close the issue explicitly after confirmation
 
-Even when GitHub's auto-close fires, post the explicit close-comment:
+**Closing the issue is human-owned.** The human reviews the merged work, confirms it's shipped, and closes the issue. The AI may *propose* the close-comment text (below) for the human to paste, but does not run `gh issue close` autonomously — closure is a `Done`-equivalent decision and falls under the same human gate as the PR merge (see [`audit-vs-execute.md`](audit-vs-execute.md)).
+
+Suggested close-comment template (idempotent — closing an already-closed issue is a no-op for state, but the comment still posts):
 
 ```bash
 gh issue close <N> --repo <OWNER>/<REPO> \
   --comment "Shipped in <merged-commit-SHA> via #<PR_NUM>."
 ```
 
-This is idempotent (closing an already-closed issue is a no-op for state, but the comment still posts) and turns the issue into a durable postmortem-style record. Future readers get a single URL with: the symptom, the root cause, the fix shape, the verification, AND the merged commit reference.
+This turns the issue into a durable postmortem-style record. Future readers get a single URL with: the symptom, the root cause, the fix shape, the verification, AND the merged commit reference.
 
 ### 6. Bundling rules
 
