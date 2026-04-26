@@ -16,6 +16,7 @@ This repo bundles:
 
 Copy this prompt and paste it to your AI:
 
+> [!WARNING]
 > Add the ctxr-dev development methodology to this project. Run these three steps:
 >
 > 1. `mkdir -p .claude/memory && cd .claude/memory && git clone https://github.com/ctxr-dev/claude-dev-methodology-dumb.git ctxr-dev`
