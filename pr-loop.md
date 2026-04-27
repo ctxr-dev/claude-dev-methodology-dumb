@@ -18,6 +18,19 @@ The loop terminates iff ALL three hold:
 
 Otherwise: keep iterating.
 
+### Things that look like exit but are NOT exit
+
+These are common false-positives. None of them, alone or in any combination, satisfies the predicate above:
+
+- ❌ **CI green** — necessary, not sufficient. Predicate (2) is independent of CI.
+- ❌ **`mergeable: MERGEABLE` / `mergeStateStatus: CLEAN`** — only means there are no merge conflicts and required checks pass. It says nothing about review comments.
+- ❌ **All review threads `isResolved: true`** — resolution is a UI affordance (see above). Resolved threads still count toward `comments.totalCount`.
+- ❌ **Reviewer's last review has 0 new comments, but on a STALE commit** — predicate (2) requires the review to be on the current HEAD SHA. A stale "0 comments" review is not exit.
+- ❌ **No new comments since the last push** — silence isn't approval. Predicate (1) requires `state == APPROVED`. For Copilot specifically, there is no `APPROVED` state, so the effective signal is "review on HEAD with zero comments AND no further re-request needed".
+- ❌ **You believe the remaining comments are out of scope** — that's a conversation to have with the user via PR comment, not a reason to declare exit. Out-of-scope feedback either gets pushed back on (leave the thread open as discussion signal) or deferred to a follow-up issue, but the predicate doesn't bend.
+
+Until predicate (1) AND (2) AND (3) all hold, the PR is **NOT ready for merge** — even if the diff feels finished, even if the human reviewer is idle. Report current state honestly ("CI green, mergeable, but reviewer left N comments on HEAD") and continue the loop, or escalate per the halt conditions below.
+
 ## Polling cadence
 
 - **Check every 5 minutes** while the loop is active.
