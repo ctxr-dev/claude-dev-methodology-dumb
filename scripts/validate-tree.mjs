@@ -71,24 +71,20 @@ for (const [k, info] of tree) {
   const seen = new Set([k]);
   let cur = info.parent;
   let hops = 0;
+  let reachedRoot = false;
   while (cur && hops < 50) {
+    if (cur === rootKey) { reachedRoot = true; break; }
     if (seen.has(cur)) { issues.cycles.push({ issue: k, cycle: [...seen, cur] }); break; }
     seen.add(cur);
     const parentInfo = tree.get(cur);
     if (!parentInfo) {
-      // parent reference not in our walked set; pull it directly to verify it leads to root
-      const [po, prr] = cur.split("/")[0] ? cur.split("/").concat() : [];
-      // simpler: bail
       issues.misRooted.push({ issue: k, terminal: cur, reason: "parent not in subtree" });
       break;
     }
     cur = parentInfo.parent;
     hops++;
   }
-  if (cur && cur !== rootKey && !issues.cycles.find((c) => c.issue === k) && !issues.misRooted.find((c) => c.issue === k)) {
-    issues.misRooted.push({ issue: k, terminal: cur, reason: "chain doesn't terminate at root" });
-  }
-  if (!cur && !issues.cycles.find((c) => c.issue === k)) {
+  if (!reachedRoot && !issues.cycles.find((c) => c.issue === k) && !issues.misRooted.find((c) => c.issue === k)) {
     issues.orphans.push({ issue: k });
   }
   if (hops > MAX_DEPTH) {

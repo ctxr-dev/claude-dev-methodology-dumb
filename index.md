@@ -2,6 +2,23 @@
 
 **ALWAYS read first** when picking up any task in a project that has imported this methodology. The order below is the recommended read order for cold-start.
 
+## Pre-bootstrap auth (run ONCE per developer machine)
+
+The methodology touches GitHub Projects v2, label cascade, branch
+protection (where available), issue + native-Type management, and
+sometimes auto-creates org-level Issue Types. Each step needs different
+`gh` token scopes. To avoid prompting the user multiple times across
+the bootstrap, request ALL needed scopes upfront in a single refresh:
+
+```bash
+gh auth refresh -h github.com -s read:org,admin:org,project,workflow,admin:repo_hook,admin:org_hook,repo
+```
+
+If the user can't grant `admin:org` (not an org admin), drop that scope
+and skip the "auto-create native Issue Type" branch in
+[`label-taxonomy.md`](label-taxonomy.md). All other bootstrap steps work
+without it.
+
 ## Per-project configuration
 
 Before doing anything, check whether `.claude/memory/ctxr-dev.config.local.md` exists in the project. It carries:

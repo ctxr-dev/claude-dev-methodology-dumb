@@ -20,7 +20,7 @@ const touchedArg = process.argv.find((a) => a.startsWith("--touched"));
 const touched = touchedArg ? new Set(process.argv[process.argv.indexOf(touchedArg) + 1].split(",").map(Number)) : null;
 
 const REQUIRED_SECTIONS = [
-  { re: /^>\s*\*\*(?:Part of|Sprint|Priority|Status)\*\*/m, name: "Metadata header (> blockquote)" },
+  { re: /^>\s*\*\*(?:Part of|Sprint|Priority|Status):?\*\*/m, name: "Metadata header (> blockquote)" },
   { re: /^##\s+Why/im, name: "## Why" },
   { re: /^##\s+Action items/im, name: "## Action items" },
   { re: /^##\s+Acceptance/im, name: "## Acceptance" },
